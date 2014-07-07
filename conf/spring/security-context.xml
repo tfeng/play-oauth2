@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xmlns:oauth="http://www.springframework.org/schema/security/oauth2"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/security
+                           http://www.springframework.org/schema/security/spring-security.xsd
+                           http://www.springframework.org/schema/security/oauth2
+                           http://www.springframework.org/schema/security/spring-security-oauth2.xsd">
+
+  <bean id="passwordEncoder"
+        class="org.springframework.security.crypto.password.StandardPasswordEncoder">
+    <constructor-arg value="${security.password-encoder.secret}" />
+  </bean>
+
+  <bean id="clientDetailsUserService"
+        class="org.springframework.security.oauth2.provider.client.ClientDetailsUserDetailsService">
+    <constructor-arg ref="clientDetailsService" />
+  </bean>
+
+  <bean id="inMemoryTokenStore"
+        class="org.springframework.security.oauth2.provider.token.store.InMemoryTokenStore"/>
+
+  <bean id="tokenServices"
+        class="org.springframework.security.oauth2.provider.token.DefaultTokenServices">
+    <property name="tokenStore" ref="inMemoryTokenStore" />
+    <property name="supportRefreshToken" value="true" />
+    <property name="clientDetailsService" ref="clientDetailsService" />
+  </bean>
+
+  <bean id="userApprovalHandler"
+        class="org.springframework.security.oauth2.provider.approval.TokenStoreUserApprovalHandler">
+    <property name="tokenStore" ref="inMemoryTokenStore" />
+    <property name="requestFactory">
+      <bean class="org.springframework.security.oauth2.provider.request.DefaultOAuth2RequestFactory">
+        <constructor-arg ref="clientDetailsService" />
+      </bean>
+    </property>
+  </bean>
+
+  <bean id="oauth2AuthenticationManager"
+        class="org.springframework.security.oauth2.provider.authentication.OAuth2AuthenticationManager">
+    <property name="tokenServices" ref="tokenServices" />
+  </bean>
+
+  <security:authentication-manager>
+    <security:authentication-provider user-service-ref="simpleUserDetailsService">
+      <security:password-encoder ref="passwordEncoder" />
+    </security:authentication-provider>
+  </security:authentication-manager>
+
+  <security:authentication-manager id="clientAuthenticationManager">
+    <security:authentication-provider user-service-ref="clientDetailsUserService" />
+  </security:authentication-manager>
+
+  <oauth:client-details-service id="clientDetailsService">
+    <oauth:client client-id="${security.client.id}"
+                  secret="${security.client.secret}"
+                  authorized-grant-types="authorization_code,implicit,refresh_token,client_credentials,password"
+                  authorities="ROLE_CLIENT,ROLE_TRUSTED_CLIENT"
+                  scope="read,write,trust"
+                  access-token-validity="864000" />
+  </oauth:client-details-service>
+
+  <oauth:authorization-server client-details-service-ref="clientDetailsService"
+                              token-services-ref="tokenServices"
+                              user-approval-handler-ref="userApprovalHandler">
+    <oauth:authorization-code />
+    <oauth:implicit />
+    <oauth:refresh-token />
+    <oauth:client-credentials />
+    <oauth:password />
+  </oauth:authorization-server>
+
+  <oauth:expression-handler id="oauth2ExpressionHandler" />
+
+  <security:global-method-security pre-post-annotations="enabled">
+    <security:expression-handler ref="oauth2ExpressionHandler" />
+  </security:global-method-security>
+
+</beans>
