@@ -10,6 +10,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import play.libs.Json;
 import play.libs.ws.WS;
+import play.libs.ws.WSRequestHolder;
 import play.libs.ws.WSResponse;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -140,6 +141,20 @@ public class IntegrationTest {
     });
   }
 
+  @Test
+  public void testUserNotAuthenticated() {
+    running(testServer(3333), () -> {
+      WSResponse response = getUser(null);
+      assertThat(response.getStatus()).isEqualTo(401);
+
+      response = authenticateClient(clientId, clientSecret);
+      String clientAccessToken = response.asJson().findPath("accessToken").textValue();
+
+      response = getUser(clientAccessToken);
+      assertThat(response.getStatus()).isEqualTo(500);
+    });
+  }
+
   private WSResponse authenticateClient(String clientId, String clientSecret) {
     ObjectNode request = Json.newObject();
     request.putAll(ImmutableMap.of("clientId", request.textNode(clientId),
@@ -156,8 +171,11 @@ public class IntegrationTest {
   }
 
   private WSResponse getUser(String userAccessToken) {
-    return WS.url("http://localhost:3333/user/get")
-        .setHeader("Authorization", "Bearer " + userAccessToken).get().get(TIMEOUT);
+    WSRequestHolder requestHolder = WS.url("http://localhost:3333/user/get");
+    if (userAccessToken != null) {
+      requestHolder.setHeader("Authorization", "Bearer " + userAccessToken);
+    }
+    return requestHolder.get().get(TIMEOUT);
   }
 
   private WSResponse refreshUserAccessToken(String clientAccessToken, String refreshToken) {
