@@ -1,6 +1,8 @@
 Example of restful web service using OAuth2 and Play! framework
 ===========
 
+*** This example is superseded by [oauth2-plugin-example](https://github.com/tfeng/play-plugins/tree/master/oauth2-plugin-example). ***
+
 This example application integrates spring-security-oauth2 with Play to secure its restful APIs.
 
 Run the tests to make sure everything is working.
